@@ -18,7 +18,8 @@ namespace NotFluffy.PackageEditor
 
 		public static PackageEditorDB Load()
 		{
-			var filepath = Path.GetFullPath("Packages\\") + DATABASE_NAME;
+			var filepath = GetDatabasePath();
+			
 			if(File.Exists(filepath))
 			{
 				var contents = File.ReadAllText(filepath);
@@ -28,12 +29,15 @@ namespace NotFluffy.PackageEditor
 			return new PackageEditorDB();
 		}
 
+
 		public static void Store(PackageEditorDB db)
 		{
-			var filepath = Path.GetFullPath("Packages\\") + DATABASE_NAME;
+			var filepath = GetDatabasePath();
 			var contents = JsonUtility.ToJson(db);
 			File.WriteAllText(filepath, contents);
 		}
+		
+		private static string GetDatabasePath() => Path.Combine(Path.GetFullPath("Packages"), DATABASE_NAME);
 
 		#endregion
 	}
