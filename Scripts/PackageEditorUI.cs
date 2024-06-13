@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 using Debug = UnityEngine.Debug;
 
-namespace Hibzz.PackageEditor
+namespace NotFluffy.PackageEditor
 {
 	[InitializeOnLoad]
 	public class PackageEditorUI : IPackageManagerExtension
@@ -21,14 +21,14 @@ namespace Hibzz.PackageEditor
 		}
 
 		// The main object representing the PackageEditor
-		PackageEditor packageEditor = new PackageEditor();
+		private readonly PackageEditor packageEditor = new();
 
 		// The root element of the extension UI
-		VisualElement root;
+		private VisualElement root;
 
 		public VisualElement CreateExtensionUI()
 		{
-			root = new VisualElement()
+			root = new VisualElement
 			{
 				style =
 				{
@@ -54,25 +54,30 @@ namespace Hibzz.PackageEditor
 			if(packageInfo.source == PackageSource.Git)
 			{
 				// then add a button to the root
-				Button button = new Button();
-				button.text = "Switch to development mode";
+				var button = new Button
+				{
+					text = "Switch to development mode"
+				};
+				
 				button.clicked += () => packageEditor.SwitchToEmbed(packageInfo);
 				root.Add(button);
 			}
 			else if(packageInfo.source == PackageSource.Embedded)
 			{
-				// no package editor found
-				if(packageEditor is null) { return; }
-
 				// no database found
-				if (packageEditor.Database is null) { return; }
+				if (packageEditor?.Database is null) 
+					return;
 
 				// database has no entry of the package
-				if(!packageEditor.IsPackageInDatabase(packageInfo.name)) { return; }
+				if(!packageEditor.IsPackageInDatabase(packageInfo.name)) 
+					return;
 
 				// data base has entry of the package... so, add the button to revert to production
-				Button button = new Button();
-				button.text = "Revert to production mode";
+				var button = new Button
+				{
+					text = "Revert to production mode"
+				};
+				
 				button.clicked += () => packageEditor.SwitchToGit(packageInfo);
 				root.Add(button);
 			}

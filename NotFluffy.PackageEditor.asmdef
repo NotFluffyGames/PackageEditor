@@ -1,15 +1,15 @@
 {
-    "name": "com.hibzz.packageeditor",
-    "rootNamespace": "Hibzz.PackageEditor",
+    "name": "NotFluffy.PackageEditor",
+    "rootNamespace": "NotFluffy.PackageEditor",
     "references": [],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
+    "overrideReferences": true,
     "precompiledReferences": [],
-    "autoReferenced": true,
+    "autoReferenced": false,
     "defineConstraints": [],
     "versionDefines": [],
     "noEngineReferences": false
