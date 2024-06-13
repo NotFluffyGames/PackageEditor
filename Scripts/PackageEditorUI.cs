@@ -4,8 +4,9 @@ using UnityEditor;
 using UnityEngine;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.UI;
+using UnityEngine.UI;
 using UnityEngine.UIElements;
-
+using Button = UnityEngine.UIElements.Button;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 using Debug = UnityEngine.Debug;
 
@@ -54,13 +55,12 @@ namespace NotFluffy.PackageEditor
 			if(packageInfo.source == PackageSource.Git)
 			{
 				// then add a button to the root
-				var button = new Button
+				var switchButton = new Button(() => packageEditor.SwitchToEmbed(packageInfo))
 				{
 					text = "Switch to development mode"
 				};
 				
-				button.clicked += () => packageEditor.SwitchToEmbed(packageInfo);
-				root.Add(button);
+				root.Add(switchButton);
 			}
 			else if(packageInfo.source == PackageSource.Embedded)
 			{
@@ -72,14 +72,30 @@ namespace NotFluffy.PackageEditor
 				if(!packageEditor.IsPackageInDatabase(packageInfo.name)) 
 					return;
 
+				var horizontalGroup = new VisualElement
+				{
+					style =
+					{
+						flexDirection = FlexDirection.Row
+					}
+				};
+
+				root.Add(horizontalGroup);
+				
 				// data base has entry of the package... so, add the button to revert to production
-				var button = new Button
+				var revertButton = new Button(() => packageEditor.SwitchToGit(packageInfo))
 				{
 					text = "Revert to production mode"
 				};
 				
-				button.clicked += () => packageEditor.SwitchToGit(packageInfo);
-				root.Add(button);
+				horizontalGroup.Add(revertButton);
+
+				var openDirectoryButton = new Button(() => PackageEditor.OpenDirectory(packageInfo))
+				{
+					text = "Open Directory"
+				};
+				
+				horizontalGroup.Add(openDirectoryButton);
 			}
 		}
 	}

@@ -16,7 +16,7 @@ namespace NotFluffy.PackageEditor
 
 		#region Utilities
 
-		public static PackageEditorDB Reload()
+		public static PackageEditorDB Load()
 		{
 			var filepath = Path.GetFullPath("Packages\\") + DATABASE_NAME;
 			if(File.Exists(filepath))
