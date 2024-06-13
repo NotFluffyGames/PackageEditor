@@ -26,8 +26,8 @@ namespace NotFluffy.PackageEditor
             {
                 // the package id for a package installed with git is `package_name@package_giturl`
                 // so we extract the url out
-                var repoUrl = packageInfo.packageId.Substring(packageInfo.packageId.IndexOf('@') + 1);
-
+                var repoUrl = GetRepoUrl(packageInfo);
+                
                 // figure out the path to which the repo must be cloned to
                 var devPackagesDirectory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
@@ -37,8 +37,7 @@ namespace NotFluffy.PackageEditor
                 var packageDirectory = Path.Combine(
                     devPackagesDirectory,
                     packageInfo.name);
-
-                Debug.Log($"Target path: {packageDirectory}");
+                
                 // update the progress bar
                 UpdateProgress("Initializing", 1);
 
@@ -48,8 +47,8 @@ namespace NotFluffy.PackageEditor
 
                 if (Directory.Exists(packageDirectory))
                     Directory.Delete(packageDirectory, true);
-
-                Clone(repoUrl, devPackagesDirectory, packageInfo.name);
+                
+                Clone(packageInfo, devPackagesDirectory);
 
                 // add the entry to the database
                 UpdateProgress("Updating Database", 3);
@@ -80,6 +79,11 @@ namespace NotFluffy.PackageEditor
                 EditorUtility.ClearProgressBar();
                 AssetDatabase.Refresh();
             }
+        }
+
+        private static string GetRepoUrl(PackageInfo packageInfo)
+        {
+            return packageInfo.packageId.Substring(packageInfo.packageId.IndexOf('@') + 1);
         }
 
         // switch from embed mode to git
@@ -159,26 +163,33 @@ namespace NotFluffy.PackageEditor
         }
 
         // clone the given url if possible
-        private static void Clone(string url, string workingDirectory, string packageName)
+        private static void Clone(PackageInfo packageInfo, string workingDirectory)
         {
+            var url = GetRepoUrl(packageInfo);
+            var packageName = packageInfo.name;
+            
             var path = Path.Combine(
                 workingDirectory,
                 packageName);
 
+            Process process;
+            
             // if there's already content in the path, we skip the cloning process
             if (Directory.Exists(path) && Directory.EnumerateFileSystemEntries(path).Any())
             {
-                Debug.Log("<color=#1473e6><b>Skipping Git Clone: <b></color>" +
-                          "A developer environment already exists for the requested package.\n" +
-                          $"If this is not the intended effect, please delete the appropriate folder in the Documents/{DOCUMENT_SUB_FOLDER}/");
-                return;
+                process = new Process
+                {
+                    StartInfo = CreateGitProcessStartInfo($"checkout {packageInfo.git.hash}")
+                };
             }
-
-            // Configure the process that can perform the git clone
-            var process = new Process
+            else
             {
-                StartInfo = CreateGitProcessStartInfo($"clone {url} {packageName}", workingDirectory)
-            };
+                // Configure the process that can perform the git clone
+                process = new Process
+                {
+                    StartInfo = CreateGitProcessStartInfo($"clone {url} {packageName}", workingDirectory)
+                };
+            }
 
             // update the progress bar
             UpdateProgress("Cloning the git repository", 2);
