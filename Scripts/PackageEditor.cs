@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.PackageManager;
+using UnityEngine;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 using Debug = UnityEngine.Debug;
 
@@ -30,6 +31,7 @@ namespace NotFluffy.PackageEditor
                 
                 // figure out the path to which the repo must be cloned to
                 var devPackagesDirectory = Path.Combine(
+                    EditorApplication.applicationContentsPath,
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                     DOCUMENT_SUB_FOLDER
                 );
@@ -44,9 +46,6 @@ namespace NotFluffy.PackageEditor
                 // create the file path if it doesn't exist and clone the repo there
                 // (according .net documentation, we don't need to check if it exists or not)
                 Directory.CreateDirectory(devPackagesDirectory);
-
-                if (Directory.Exists(packageDirectory))
-                    Directory.Delete(packageDirectory, true);
                 
                 Clone(packageInfo, devPackagesDirectory);
 
@@ -224,6 +223,7 @@ namespace NotFluffy.PackageEditor
 			{
 				FileName = "git",
 				Arguments = argument,
+                CreateNoWindow = true,
 				WorkingDirectory = workingDirectory
 			};
 #else
@@ -234,12 +234,11 @@ namespace NotFluffy.PackageEditor
         private static ProcessStartInfo CreateProcessStartInfo(string argument, string workingDirectory = "")
         {
 #if UNITY_EDITOR_WIN
-			return new ProcessStartInfo()
-			{
+			return new ProcessStartInfo
+            {
 				FileName = "cmd.exe",
 				Arguments = argument,
 				Verb = "runas",
-				RedirectStandardError = true,
 				CreateNoWindow = true,
 				WorkingDirectory = workingDirectory
 			};
@@ -261,10 +260,13 @@ namespace NotFluffy.PackageEditor
             // Start the process and wait for it to be done
             process.Start();
 
-            var error = process.StandardError.ReadToEnd();
+            if (process.StartInfo.RedirectStandardError)
+            {
+                var error = process.StandardError.ReadToEnd();
 
-            if (!string.IsNullOrWhiteSpace(error))
-                Debug.LogError(error);
+                if (!string.IsNullOrWhiteSpace(error))
+                    Debug.LogError(error);
+            }
 
             process.WaitForExit();
         }
