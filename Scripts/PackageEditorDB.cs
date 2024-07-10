@@ -1,52 +1,66 @@
 #if UNITY_EDITOR
 
-using System;
 using System.Collections.Generic;
 using System.IO;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace NotFluffy.PackageEditor
 {
-	[Serializable]
-	public class PackageEditorDB
+	public static class PackageEditorDB
 	{
 		private const string DATABASE_NAME = "PackageEditorDB.json";
 
-		public List<PackageEditorDBEntry> Entries = new();
+		private static readonly Dictionary<string, string> Entries;
 
 		#region Utilities
 
-		public static PackageEditorDB Load()
+		static PackageEditorDB()
 		{
-			var filepath = GetDatabasePath();
-			
-			if(File.Exists(filepath))
-			{
-				var contents = File.ReadAllText(filepath);
-				return JsonUtility.FromJson<PackageEditorDB>(contents);
-			}
-
-			return new();
+			Entries = Load();
 		}
 
-
-		public static void Store(PackageEditorDB db)
+		private static Dictionary<string, string> Load()
 		{
 			var filepath = GetDatabasePath();
-			var contents = JsonUtility.ToJson(db, true);
+
+			if (!File.Exists(filepath))
+				return new();
+			
+			var contents = File.ReadAllText(filepath);
+			return JsonUtility.FromJson<Dictionary<string, string>>(contents);
+		}
+
+		public static bool TryGetUrl(PackageInfo packageInfo, out string url) => Entries.TryGetValue(packageInfo.name, out url);
+		public static bool Contains(PackageInfo packageInfo) => Entries.ContainsKey(packageInfo.name);
+
+		public static void Add(PackageInfo packageInfo)
+		{
+			var url = packageInfo.GetPackageUrl();
+			
+			if (Entries.TryGetValue(packageInfo.name, out var existing) && existing == url)
+				return;
+			
+			Entries[packageInfo.name] = url;
+			Flush();
+		}
+		
+		public static void Remove(PackageInfo packageInfo)
+		{
+			if (Entries.Remove(packageInfo.name))
+				Flush();
+		}
+
+		private static void Flush()
+		{
+			var filepath = GetDatabasePath();
+			var contents = JsonUtility.ToJson(Entries, true);
 			File.WriteAllText(filepath, contents);
 		}
 		
 		private static string GetDatabasePath() => Path.Combine(Path.GetFullPath("Packages"), DATABASE_NAME);
 
 		#endregion
-	}
-
-	[Serializable]
-	public struct PackageEditorDBEntry 
-	{
-		public string Name;
-		public string URL;
 	}
 }
 

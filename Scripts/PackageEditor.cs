@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
@@ -10,38 +9,25 @@ using Debug = UnityEngine.Debug;
 
 namespace NotFluffy.PackageEditor
 {
-    public class PackageEditor
+    public static class PackageEditor
     {
         private const string DOCUMENT_SUB_FOLDER = "UnityGitPackages"; // Name of the submodule folder in the User's "My Documents" folder
-        private const string PROGRESS_BAR_NAME = "Hibzz.PackageEditor"; // 
-        private const int STEPS = 6;
+        private const string PROGRESS_BAR_NAME = "Package Editor"; 
 
-        public readonly PackageEditorDB Database = PackageEditorDB.Load();
-
-        // update the database
-
-        // Switch from git mode to embed mode
-        public void SwitchToEmbed(PackageInfo packageInfo)
+        /// <summary>
+        /// Switch from git mode to embed mode
+        /// </summary>
+        public static void SwitchToEmbed(this PackageInfo packageInfo)
         {
+            var progress = new ProgressBarHandler(PROGRESS_BAR_NAME, 4);
             try
             {
-                // the package id for a package installed with git is `package_name@package_giturl`
-                // so we extract the url out
-                if (string.IsNullOrWhiteSpace(packageInfo.packageId))
-                    throw new NullReferenceException(nameof(packageInfo.packageId));
+                ValidateGitPackageInfo(packageInfo);
 
-                if (string.IsNullOrWhiteSpace(packageInfo.name))
-                    throw new NullReferenceException(nameof(packageInfo.name));
+                packageInfo.ParseGitUrl(out var packageUrl, out var repoUrl, out var packagePath, out _);
                 
-                if (string.IsNullOrWhiteSpace(packageInfo.git.hash))
-                    throw new NullReferenceException(nameof(packageInfo.git.hash));
-                
-                var packageUrl = ParsePackageUrl(packageInfo.packageId);
-
                 if (string.IsNullOrWhiteSpace(packageUrl))
                     throw new NullReferenceException(nameof(packageUrl));
-                
-                ParseGitUrl(packageUrl, out var repoUrl, out var packagePath, out _);
 
                 if (string.IsNullOrWhiteSpace(repoUrl))
                     throw new NullReferenceException(repoUrl);
@@ -51,7 +37,6 @@ namespace NotFluffy.PackageEditor
                 
                 // figure out the path to which the repo must be cloned to
                 var devPackagesDirectory = Path.Combine(
-                    EditorApplication.applicationContentsPath,
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                     DOCUMENT_SUB_FOLDER
                 );
@@ -59,39 +44,33 @@ namespace NotFluffy.PackageEditor
                 var repoDirectory = Path.Combine(
                     devPackagesDirectory,
                     packageInfo.name);
-                
-                // update the progress bar
-                UpdateProgress("Initializing", 1);
 
+                var packageDirectory = repoDirectory;
+                if(!string.IsNullOrWhiteSpace(packagePath))
+                    packageDirectory = Path.Combine(
+                        repoDirectory,
+                        packagePath);
+                
+                progress.MoveNext("Cloning the git repository");
+                
                 // create the file path if it doesn't exist and clone the repo there
                 // (according .net documentation, we don't need to check if it exists or not)
                 Directory.CreateDirectory(devPackagesDirectory);
                 
                 Clone(repoUrl, packageInfo.git.hash, packageInfo.name, devPackagesDirectory);
 
-                // add the entry to the database
-                UpdateProgress("Updating Database", 3);
-
                 // create a symbolic link to the packages folder
-                UpdateProgress("Creating symbolic link to the cloned repository", 5);
-
-                var destination = PackagePath(packageInfo);
-
-                var packageDirectory = Path.Combine(
-                    repoDirectory,
-                    packagePath);
+                progress.MoveNext("Creating symbolic link to the cloned repository");
                 
-                CreateSymlink(source: packageDirectory, destination);
-
-                // remove the git package
-                UpdateProgress("Removing package downloaded from Git", 4);
-                
-                Database.Entries.Add(new() { Name = packageInfo.name, URL = packageUrl });
-                Client.Remove(packageInfo.name);
+                var symlinkDestination = PackagePath(packageInfo);
+                CreateSymlink(source: packageDirectory, symlinkDestination);
 
                 // Perform the serialization / save
-                UpdateProgress("Serializing Database", 6);
-                PackageEditorDB.Store(Database);
+                progress.MoveNext("Serializing database");
+                PackageEditorDB.Add(packageInfo);
+                
+                progress.MoveNext("Removing the git package");
+                Client.Remove(packageInfo.name);
             }
             catch (Exception e)
             {
@@ -100,68 +79,52 @@ namespace NotFluffy.PackageEditor
             }
             finally
             {
-                // Done!
-                EditorUtility.ClearProgressBar();
+                progress.MoveNext("Refreshing assets");
                 AssetDatabase.Refresh();
+                EditorUtility.ClearProgressBar();
             }
         }
 
-        public static string ParsePackageUrl(string packageId)
+        private static void ValidateGitPackageInfo(PackageInfo packageInfo)
         {
-            return packageId[(packageId.IndexOf('@') + 1)..];
+            if (string.IsNullOrWhiteSpace(packageInfo.packageId))
+                throw new NullReferenceException(nameof(packageInfo.packageId));
+
+            if (string.IsNullOrWhiteSpace(packageInfo.name))
+                throw new NullReferenceException(nameof(packageInfo.name));
+                
+            if (string.IsNullOrWhiteSpace(packageInfo.git.hash))
+                throw new NullReferenceException(nameof(packageInfo.git.hash));
         }
-        public static void ParseGitUrl(string packageUrl, out string repoUrl, out string packagePathInRepo, out string revision)
-        {
-            // Regex expression to match the URL, path, and revision
-            const string pattern = @"^(?<url>[^?#]+\.git)(?:\?(?:path=(?<path>[^#?]+))?)?(?:#(?<revision>[^?]+))?(?:\?(?:path=(?<path2>[^#]+))?)?$";
-            
-            var match = new Regex(pattern).Match(packageUrl);
 
-            if (!match.Success)
-                throw new Exception($"Failed to match repository info from package URL: {packageUrl}");
-
-            var urlGroup = match.Groups["url"];
-            repoUrl = urlGroup.Success ? urlGroup.Value : null;
-            
-            var pathGroup = match.Groups["path"];
-            if(pathGroup.Success)
-            {
-                packagePathInRepo = pathGroup.Value;
-            }
-            else
-            {
-                var path2Group = match.Groups["path2"];
-                packagePathInRepo = path2Group.Success ? path2Group.Value : null;
-            }
-
-            if(!string.IsNullOrWhiteSpace(packagePathInRepo))
-                packagePathInRepo = Path.Combine(packagePathInRepo.Split('/', '\\'));
-
-            var revisionGroup = match.Groups["revision"];
-            revision = revisionGroup.Success ? revisionGroup.Value : null;
-        }
 
         // switch from embed mode to git
-        public void SwitchToGit(PackageInfo packageInfo)
+        public static void SwitchToGit(this PackageInfo packageInfo)
         {
+            var progress = new ProgressBarHandler(PROGRESS_BAR_NAME, 2);
+            
             try
             {
-                // remove the package
-                UpdateProgress("Removing the symlink", 2);
+                ValidateEmbededPackageInfo(packageInfo);
+                
+                progress.MoveNext("Removing the embedded package");
 
                 var packagePath = PackagePath(packageInfo);
 
                 Directory.Delete(packagePath);
+                
+                progress.MoveNext("Reinstalling git package");
+                
+                if(!PackageEditorDB.TryGetUrl(packageInfo, out var url))
+                    throw new NullReferenceException(nameof(url));
+                
+                if(string.IsNullOrWhiteSpace(url))
+                    throw new NullReferenceException(nameof(url));
+                
+                Client.Add(url);
 
-                // install the one with the git url from the entries
-                UpdateProgress("Reinstalling git package", 4);
-                var data = Database.Entries.Find(data => data.Name == packageInfo.name);
-                Client.Add(data.URL);
-
-                // Update the database
-                UpdateProgress("Updating database", 6);
-                Database.Entries.RemoveAll(entry => entry.Name == packageInfo.name);
-                PackageEditorDB.Store(Database);
+                progress.MoveNext("Removing the git package from the database");
+                PackageEditorDB.Remove(packageInfo);
             }
             catch (Exception e)
             {
@@ -169,18 +132,23 @@ namespace NotFluffy.PackageEditor
             }
             finally
             {
-                // Done!
-                EditorUtility.ClearProgressBar();
+                progress.MoveNext("Refreshing assets");
                 AssetDatabase.Refresh();
+                EditorUtility.ClearProgressBar();
             }
+        }
+        
+        private static void ValidateEmbededPackageInfo(PackageInfo packageInfo)
+        {
+            if (string.IsNullOrWhiteSpace(packageInfo.name))
+                throw new NullReferenceException(nameof(packageInfo.name));
         }
 
         private static string PackagePath(PackageInfo packageInfo)
         {
-            var packagePath = Path.Combine(
+            return Path.Combine(
                 Path.GetFullPath("Packages\\"),
                 packageInfo.name);
-            return packagePath;
         }
 
         public static void OpenDirectory(PackageInfo packageInfo)
@@ -200,21 +168,6 @@ namespace NotFluffy.PackageEditor
             {
                 Debug.LogException(e);
             }
-        }
-
-        // check if the given repo is part of the database
-        public bool IsPackageInDatabase(string name)
-        {
-            // no database found
-            if (Database is null)
-                return false;
-
-            // no entries with the given name found in the database
-            if (Database.Entries.All(data => data.Name != name))
-                return false;
-
-            // found
-            return true;
         }
 
         // Clone the given url if possible
@@ -242,9 +195,6 @@ namespace NotFluffy.PackageEditor
                     StartInfo = CreateGitProcessStartInfo($"clone {repoUrl} {directory}", workingDirectory)
                 };
             }
-
-            // update the progress bar
-            UpdateProgress("Cloning the git repository", 2);
 
             RunProcess(process);
 
@@ -309,6 +259,30 @@ namespace NotFluffy.PackageEditor
             };
 #endif
         }
+        
+        private static ProcessStartInfo CreateOpenDirectoryProcessStartInfo(string path, string workingDirectory = "")
+                {
+        #if UNITY_EDITOR_WIN
+        			return new ProcessStartInfo
+        			{
+        				FileName = "explorer.exe",
+        				Arguments = path,
+        				RedirectStandardError = true,
+        				CreateNoWindow = true,
+        				WorkingDirectory = workingDirectory
+        			};
+        #else
+                    return new ProcessStartInfo
+                    {
+                        FileName = "open",
+                        Arguments = path,
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true,
+                        WorkingDirectory = workingDirectory
+                    };
+        #endif
+                }
 
         private static void RunProcess(Process process)
         {
@@ -324,36 +298,6 @@ namespace NotFluffy.PackageEditor
             }
 
             process.WaitForExit();
-        }
-
-        private static ProcessStartInfo CreateOpenDirectoryProcessStartInfo(string path, string workingDirectory = "")
-        {
-#if UNITY_EDITOR_WIN
-			return new ProcessStartInfo
-			{
-				FileName = "explorer.exe",
-				Arguments = path,
-				RedirectStandardError = true,
-				CreateNoWindow = true,
-				WorkingDirectory = workingDirectory
-			};
-#else
-            return new ProcessStartInfo
-            {
-                FileName = "open",
-                Arguments = path,
-                UseShellExecute = false,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                WorkingDirectory = workingDirectory
-            };
-#endif
-        }
-
-        // update the progress bar
-        private static void UpdateProgress(string info, float currentStep)
-        {
-            EditorUtility.DisplayProgressBar(PROGRESS_BAR_NAME, info, currentStep / STEPS);
         }
     }
 }
