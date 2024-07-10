@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEngine;
@@ -27,7 +28,7 @@ namespace NotFluffy.PackageEditor
             {
                 // the package id for a package installed with git is `package_name@package_giturl`
                 // so we extract the url out
-                var repoUrl = GetRepoUrl(packageInfo);
+                ParseGitUrl(packageInfo.packageId, out var repoUrl, out var packagePath, out _);
                 
                 // figure out the path to which the repo must be cloned to
                 var devPackagesDirectory = Path.Combine(
@@ -36,7 +37,7 @@ namespace NotFluffy.PackageEditor
                     DOCUMENT_SUB_FOLDER
                 );
 
-                var packageDirectory = Path.Combine(
+                var repoDirectory = Path.Combine(
                     devPackagesDirectory,
                     packageInfo.name);
                 
@@ -47,7 +48,7 @@ namespace NotFluffy.PackageEditor
                 // (according .net documentation, we don't need to check if it exists or not)
                 Directory.CreateDirectory(devPackagesDirectory);
                 
-                Clone(packageInfo, devPackagesDirectory);
+                Clone(repoUrl, packageInfo.git.hash, packageInfo.name, devPackagesDirectory);
 
                 // add the entry to the database
                 UpdateProgress("Updating Database", 3);
@@ -58,6 +59,9 @@ namespace NotFluffy.PackageEditor
 
                 var destination = PackagePath(packageInfo);
 
+                var packageDirectory = Path.Combine(
+                    repoDirectory,
+                    packagePath);
                 CreateSymlink(source: packageDirectory, destination);
 
                 // remove the git package
@@ -80,9 +84,33 @@ namespace NotFluffy.PackageEditor
             }
         }
 
-        private static string GetRepoUrl(PackageInfo packageInfo)
+        public static void ParseGitUrl(string packageId, out string repoUrl, out string packagePathInRepo, out string revision)
         {
-            return packageInfo.packageId.Substring(packageInfo.packageId.IndexOf('@') + 1);
+            // Regex expression to match the URL, path, and revision
+            const string pattern = @"^(?<url>[^?#]+\.git)(?:\?(?:path=(?<path>[^#?]+))?)?(?:#(?<revision>[^?]+))?(?:\?(?:path=(?<path2>[^#]+))?)?$";
+
+            var packageUrl = packageId[(packageId.IndexOf('@') + 1)..];
+            var match = new Regex(pattern).Match(packageUrl);
+
+            if (!match.Success)
+                throw new Exception($"Failed to match repository info from package URL: {packageId}");
+
+            var urlGroup = match.Groups["url"];
+            repoUrl = urlGroup.Success ? urlGroup.Value : null;
+            
+            var pathGroup = match.Groups["path"];
+            if(pathGroup.Success)
+            {
+                packagePathInRepo = pathGroup.Value;
+            }
+            else
+            {
+                var path2Group = match.Groups["path2"];
+                packagePathInRepo = path2Group.Success ? path2Group.Value : null;
+            }
+
+            var revisionGroup = match.Groups["revision"];
+            revision = revisionGroup.Success ? revisionGroup.Value : null;
         }
 
         // switch from embed mode to git
@@ -162,14 +190,11 @@ namespace NotFluffy.PackageEditor
         }
 
         // clone the given url if possible
-        private static void Clone(PackageInfo packageInfo, string workingDirectory)
+        private static void Clone(string repoUrl, string commitHash, string directory, string workingDirectory)
         {
-            var url = GetRepoUrl(packageInfo);
-            var packageName = packageInfo.name;
-            
             var path = Path.Combine(
                 workingDirectory,
-                packageName);
+                directory);
 
             Process process;
             
@@ -178,7 +203,7 @@ namespace NotFluffy.PackageEditor
             {
                 process = new Process
                 {
-                    StartInfo = CreateGitProcessStartInfo($"checkout {packageInfo.git.hash}")
+                    StartInfo = CreateGitProcessStartInfo($"checkout {commitHash}")
                 };
             }
             else
@@ -186,7 +211,7 @@ namespace NotFluffy.PackageEditor
                 // Configure the process that can perform the git clone
                 process = new Process
                 {
-                    StartInfo = CreateGitProcessStartInfo($"clone {url} {packageName}", workingDirectory)
+                    StartInfo = CreateGitProcessStartInfo($"clone {repoUrl} {directory}", workingDirectory)
                 };
             }
 
