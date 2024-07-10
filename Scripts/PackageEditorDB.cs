@@ -26,14 +26,14 @@ namespace NotFluffy.PackageEditor
 				return JsonUtility.FromJson<PackageEditorDB>(contents);
 			}
 
-			return new PackageEditorDB();
+			return new();
 		}
 
 
 		public static void Store(PackageEditorDB db)
 		{
 			var filepath = GetDatabasePath();
-			var contents = JsonUtility.ToJson(db);
+			var contents = JsonUtility.ToJson(db, true);
 			File.WriteAllText(filepath, contents);
 		}
 		

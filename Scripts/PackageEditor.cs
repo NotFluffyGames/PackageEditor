@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.PackageManager;
-using UnityEngine;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 using Debug = UnityEngine.Debug;
 
@@ -28,7 +27,27 @@ namespace NotFluffy.PackageEditor
             {
                 // the package id for a package installed with git is `package_name@package_giturl`
                 // so we extract the url out
-                ParseGitUrl(packageInfo.packageId, out var repoUrl, out var packagePath, out _);
+                if (string.IsNullOrWhiteSpace(packageInfo.packageId))
+                    throw new NullReferenceException(nameof(packageInfo.packageId));
+
+                if (string.IsNullOrWhiteSpace(packageInfo.name))
+                    throw new NullReferenceException(nameof(packageInfo.name));
+                
+                if (string.IsNullOrWhiteSpace(packageInfo.git.hash))
+                    throw new NullReferenceException(nameof(packageInfo.git.hash));
+                
+                var packageUrl = ParsePackageUrl(packageInfo.packageId);
+
+                if (string.IsNullOrWhiteSpace(packageUrl))
+                    throw new NullReferenceException(nameof(packageUrl));
+                
+                ParseGitUrl(packageUrl, out var repoUrl, out var packagePath, out _);
+
+                if (string.IsNullOrWhiteSpace(repoUrl))
+                    throw new NullReferenceException(repoUrl);
+
+                if (!Uri.IsWellFormedUriString(repoUrl, UriKind.Absolute))
+                    throw new UriFormatException($"Repo url is not a valid URI {repoUrl}");
                 
                 // figure out the path to which the repo must be cloned to
                 var devPackagesDirectory = Path.Combine(
@@ -52,7 +71,6 @@ namespace NotFluffy.PackageEditor
 
                 // add the entry to the database
                 UpdateProgress("Updating Database", 3);
-                Database.Entries.Add(new PackageEditorDBEntry { Name = packageInfo.name, URL = repoUrl });
 
                 // create a symbolic link to the packages folder
                 UpdateProgress("Creating symbolic link to the cloned repository", 5);
@@ -62,10 +80,13 @@ namespace NotFluffy.PackageEditor
                 var packageDirectory = Path.Combine(
                     repoDirectory,
                     packagePath);
+                
                 CreateSymlink(source: packageDirectory, destination);
 
                 // remove the git package
                 UpdateProgress("Removing package downloaded from Git", 4);
+                
+                Database.Entries.Add(new() { Name = packageInfo.name, URL = packageUrl });
                 Client.Remove(packageInfo.name);
 
                 // Perform the serialization / save
@@ -75,6 +96,7 @@ namespace NotFluffy.PackageEditor
             catch (Exception e)
             {
                 Debug.LogException(e);
+                EditorUtility.DisplayDialog("Failed to switch to development mode", e.Message, "Continue");
             }
             finally
             {
@@ -84,16 +106,19 @@ namespace NotFluffy.PackageEditor
             }
         }
 
-        public static void ParseGitUrl(string packageId, out string repoUrl, out string packagePathInRepo, out string revision)
+        public static string ParsePackageUrl(string packageId)
+        {
+            return packageId[(packageId.IndexOf('@') + 1)..];
+        }
+        public static void ParseGitUrl(string packageUrl, out string repoUrl, out string packagePathInRepo, out string revision)
         {
             // Regex expression to match the URL, path, and revision
             const string pattern = @"^(?<url>[^?#]+\.git)(?:\?(?:path=(?<path>[^#?]+))?)?(?:#(?<revision>[^?]+))?(?:\?(?:path=(?<path2>[^#]+))?)?$";
-
-            var packageUrl = packageId[(packageId.IndexOf('@') + 1)..];
+            
             var match = new Regex(pattern).Match(packageUrl);
 
             if (!match.Success)
-                throw new Exception($"Failed to match repository info from package URL: {packageId}");
+                throw new Exception($"Failed to match repository info from package URL: {packageUrl}");
 
             var urlGroup = match.Groups["url"];
             repoUrl = urlGroup.Success ? urlGroup.Value : null;
@@ -108,6 +133,9 @@ namespace NotFluffy.PackageEditor
                 var path2Group = match.Groups["path2"];
                 packagePathInRepo = path2Group.Success ? path2Group.Value : null;
             }
+
+            if(!string.IsNullOrWhiteSpace(packagePathInRepo))
+                packagePathInRepo = Path.Combine(packagePathInRepo.Split('/', '\\'));
 
             var revisionGroup = match.Groups["revision"];
             revision = revisionGroup.Success ? revisionGroup.Value : null;
@@ -189,7 +217,7 @@ namespace NotFluffy.PackageEditor
             return true;
         }
 
-        // clone the given url if possible
+        // Clone the given url if possible
         private static void Clone(string repoUrl, string commitHash, string directory, string workingDirectory)
         {
             var path = Path.Combine(
@@ -219,6 +247,9 @@ namespace NotFluffy.PackageEditor
             UpdateProgress("Cloning the git repository", 2);
 
             RunProcess(process);
+
+            if (!Directory.Exists(path) || !Directory.EnumerateFileSystemEntries(path).Any())
+                throw new($"Failed to clone repo {repoUrl} to {directory}");
         }
 
         // Creates a symbolic link between the source and the given destination
@@ -248,7 +279,6 @@ namespace NotFluffy.PackageEditor
 			{
 				FileName = "git",
 				Arguments = argument,
-                CreateNoWindow = true,
 				WorkingDirectory = workingDirectory
 			};
 #else
