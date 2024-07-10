@@ -7,5 +7,8 @@
     "name": "NotFluffy"
   },
   "documentationUrl": "https://github.com/NotFluffyGames/PackageEditor",
-  "changelogUrl": "https://github.com/NotFluffyGames/PackageEditor/releases"
+  "changelogUrl": "https://github.com/NotFluffyGames/PackageEditor/releases",
+  "dependencies": {
+    "com.unity.ugui": ""
+  }
 }
