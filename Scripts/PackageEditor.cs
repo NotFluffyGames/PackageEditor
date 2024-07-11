@@ -98,7 +98,9 @@ namespace NotFluffy.PackageEditor
         }
 
 
-        // switch from embed mode to git
+        /// <summary>
+        /// Switch from embed mode to git mode
+        /// </summary>
         public static void SwitchToGit(this PackageInfo packageInfo)
         {
             var progress = new ProgressBarHandler(PROGRESS_BAR_NAME, 2);
@@ -106,6 +108,48 @@ namespace NotFluffy.PackageEditor
             try
             {
                 ValidateEmbededPackageInfo(packageInfo);
+                
+                if(!PackageEditorDB.TryGetUrl(packageInfo, out var packageUrl))
+                    throw new NullReferenceException(nameof(packageUrl));
+                
+                if(string.IsNullOrWhiteSpace(packageUrl))
+                    throw new NullReferenceException(nameof(packageUrl));
+                
+                PackageInfoExt.ParseGitUrl(packageUrl, out _, out _, out var previousVersion);
+                
+                if (!string.IsNullOrWhiteSpace(previousVersion))
+                {
+                    var currentVersion = packageInfo.version;
+                    if (currentVersion != previousVersion)
+                    {
+                        var choice = EditorUtility.DisplayDialogComplex(
+                            "Previous package version is different from current version",
+                            null, 
+                            $"Use previous version ({previousVersion})",
+                            $"Use current version ({currentVersion})",
+                            "Use latest version");
+
+                        packageUrl = choice switch
+                        {
+                            0 => packageUrl,
+                            1 => packageUrl.Replace($"#{previousVersion}", $"#{currentVersion}"),
+                            2 => packageUrl.Replace($"#{previousVersion}", ""),
+                            _ => packageUrl
+                        };
+                    }
+                    else
+                    {
+                        var usePrevious = EditorUtility.DisplayDialog(
+                            "Previous package version was found",
+                            null, 
+                            $"Use previous version ({previousVersion})",
+                            "Use latest version");
+
+                        if (!usePrevious)
+                            packageUrl = packageUrl.Replace($"#{previousVersion}", "");
+                    }
+                }
+                
                 
                 progress.MoveNext("Removing the embedded package");
 
@@ -115,13 +159,7 @@ namespace NotFluffy.PackageEditor
                 
                 progress.MoveNext("Reinstalling git package");
                 
-                if(!PackageEditorDB.TryGetUrl(packageInfo, out var url))
-                    throw new NullReferenceException(nameof(url));
-                
-                if(string.IsNullOrWhiteSpace(url))
-                    throw new NullReferenceException(nameof(url));
-                
-                Client.Add(url);
+                Client.Add(packageUrl);
 
                 progress.MoveNext("Removing the git package from the database");
                 PackageEditorDB.Remove(packageInfo);
