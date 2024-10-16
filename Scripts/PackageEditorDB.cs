@@ -57,8 +57,16 @@ namespace NotFluffy.PackageEditor
 		private static void Flush()
 		{
 			var filepath = GetDatabasePath();
-			var contents = ToString(Entries);
-			File.WriteAllText(filepath, contents);
+			
+			if(Entries.Count == 0)
+			{
+				File.Delete(filepath);
+			}
+			else
+			{
+				var contents = ToString(Entries);
+				File.WriteAllText(filepath, contents);
+			}
 		}
 
 		private static string ToString(Dictionary<string, string> dict)
@@ -69,6 +77,9 @@ namespace NotFluffy.PackageEditor
 		private static Dictionary<string, string> FromString(string str)
 		{
 			var result = new Dictionary<string, string>();
+			
+			if(string.IsNullOrWhiteSpace(str))
+				return result;
 			
 			var pairs = str.Split("\n");
 			foreach (var pair in pairs)
