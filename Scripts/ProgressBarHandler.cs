@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEngine;
 
 namespace NotFluffy.PackageEditor
 {
@@ -6,17 +7,25 @@ namespace NotFluffy.PackageEditor
     {
         public readonly string Name;
         public readonly uint Steps;
-        public int CurrentStep { get; private set; } = -1;
+        public int CurrentStep { get; private set; }
+        
+        
+  
+       
+  
 
-        public ProgressBarHandler(string name, uint steps)
+        public ProgressBarHandler(string name, uint steps, string initialStepInfo)
         {
             Steps = steps;
             Name = name;
+            
+            MoveNext(initialStepInfo);
         }
 
         public void MoveNext(string info)
         {
-            EditorUtility.DisplayProgressBar(Name, info, ++CurrentStep / (float)Steps);
+            var progress = Mathf.Clamp01(CurrentStep++ / (float)Steps);
+            EditorUtility.DisplayProgressBar(Name, info,  progress);
         }
         
     }

@@ -12,14 +12,14 @@ namespace NotFluffy.PackageEditor
     public static class PackageEditor
     {
         private const string DOCUMENT_SUB_FOLDER = "UnityGitPackages"; // Name of the submodule folder in the User's "My Documents" folder
-        private const string PROGRESS_BAR_NAME = "Package Editor"; 
+        private const string PROGRESS_BAR_NAME = "Package Editor";
 
         /// <summary>
         /// Switch from git mode to embed mode
         /// </summary>
         public static void SwitchToEmbed(this PackageInfo packageInfo)
         {
-            var progress = new ProgressBarHandler(PROGRESS_BAR_NAME, 4);
+            var progress = new ProgressBarHandler(PROGRESS_BAR_NAME, 5, "Initializing");
             try
             {
                 ValidateGitPackageInfo(packageInfo);
@@ -103,66 +103,11 @@ namespace NotFluffy.PackageEditor
         /// </summary>
         public static void SwitchToGit(this PackageInfo packageInfo)
         {
-            var progress = new ProgressBarHandler(PROGRESS_BAR_NAME, 2);
+            var progress = new ProgressBarHandler(PROGRESS_BAR_NAME, 2, "Initializing...");
             
             try
             {
-                ValidateEmbededPackageInfo(packageInfo);
-                
-                if(!PackageEditorDB.TryGetUrl(packageInfo, out var packageUrl))
-                    throw new NullReferenceException(nameof(packageUrl));
-                
-                if(string.IsNullOrWhiteSpace(packageUrl))
-                    throw new NullReferenceException(nameof(packageUrl));
-                
-                PackageInfoExt.ParseGitUrl(packageUrl, out _, out _, out var previousVersion);
-                
-                if (!string.IsNullOrWhiteSpace(previousVersion))
-                {
-                    var currentVersion = packageInfo.version;
-                    if (currentVersion != previousVersion)
-                    {
-                        var choice = EditorUtility.DisplayDialogComplex(
-                            "Previous package version is different from current version",
-                            null, 
-                            $"Use previous version ({previousVersion})",
-                            $"Use current version ({currentVersion})",
-                            "Use latest version");
-
-                        packageUrl = choice switch
-                        {
-                            0 => packageUrl,
-                            1 => packageUrl.Replace($"#{previousVersion}", $"#{currentVersion}"),
-                            2 => packageUrl.Replace($"#{previousVersion}", ""),
-                            _ => packageUrl
-                        };
-                    }
-                    else
-                    {
-                        var usePrevious = EditorUtility.DisplayDialog(
-                            "Previous package version was found",
-                            null, 
-                            $"Use previous version ({previousVersion})",
-                            "Use latest version");
-
-                        if (!usePrevious)
-                            packageUrl = packageUrl.Replace($"#{previousVersion}", "");
-                    }
-                }
-                
-                
-                progress.MoveNext("Removing the embedded package");
-
-                var packagePath = PackagePath(packageInfo);
-
-                Directory.Delete(packagePath);
-                
-                progress.MoveNext("Reinstalling git package");
-                
-                Client.Add(packageUrl);
-
-                progress.MoveNext("Removing the git package from the database");
-                PackageEditorDB.Remove(packageInfo);
+                SwitchToGit(packageInfo, progress);
             }
             catch (Exception e)
             {
@@ -176,6 +121,66 @@ namespace NotFluffy.PackageEditor
             }
         }
         
+        private static void SwitchToGit(PackageInfo packageInfo, ProgressBarHandler progress)
+        {
+            ValidateEmbededPackageInfo(packageInfo);
+                
+            if(!PackageEditorDB.TryGetUrl(packageInfo, out var packageUrl))
+                throw new NullReferenceException(nameof(packageUrl));
+                
+            if(string.IsNullOrWhiteSpace(packageUrl))
+                throw new NullReferenceException(nameof(packageUrl));
+                
+            PackageInfoExt.ParseGitUrl(packageUrl, out _, out _, out var previousVersion);
+                
+            if (!string.IsNullOrWhiteSpace(previousVersion))
+            {
+                var currentVersion = packageInfo.version;
+                if (currentVersion != previousVersion)
+                {
+                    var choice = EditorUtility.DisplayDialogComplex(
+                        "Previous package version is different from current version",
+                        null, 
+                        $"Use previous version ({previousVersion})",
+                        $"Use current version ({currentVersion})",
+                        "Use latest version");
+
+                    packageUrl = choice switch
+                    {
+                        0 => packageUrl,
+                        1 => packageUrl.Replace($"#{previousVersion}", $"#{currentVersion}"),
+                        2 => packageUrl.Replace($"#{previousVersion}", ""),
+                        _ => packageUrl
+                    };
+                }
+                else
+                {
+                    var usePrevious = EditorUtility.DisplayDialog(
+                        "Previous package version was found",
+                        null, 
+                        $"Use previous version ({previousVersion})",
+                        "Use latest version");
+
+                    if (!usePrevious)
+                        packageUrl = packageUrl.Replace($"#{previousVersion}", "");
+                }
+            }
+                
+                
+            progress?.MoveNext("Removing the embedded package");
+
+            var packagePath = PackagePath(packageInfo);
+
+            Directory.Delete(packagePath);
+                
+            progress.MoveNext("Reinstalling git package");
+                
+            Client.Add(packageUrl);
+
+            progress.MoveNext("Removing the git package from the database");
+            PackageEditorDB.Remove(packageInfo);
+        }
+
         private static void ValidateEmbededPackageInfo(PackageInfo packageInfo)
         {
             if (string.IsNullOrWhiteSpace(packageInfo.name))
@@ -336,6 +341,11 @@ namespace NotFluffy.PackageEditor
             }
 
             process.WaitForExit();
+        }
+
+        public static void SwitchAllToProduction()
+        {
+            
         }
     }
 }
