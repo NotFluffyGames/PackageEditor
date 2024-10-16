@@ -96,8 +96,7 @@ namespace NotFluffy.PackageEditor
             if (string.IsNullOrWhiteSpace(packageInfo.git.hash))
                 throw new NullReferenceException(nameof(packageInfo.git.hash));
         }
-
-
+        
         /// <summary>
         /// Switch from embed mode to git mode
         /// </summary>
@@ -227,7 +226,7 @@ namespace NotFluffy.PackageEditor
             {
                 process = new Process
                 {
-                    StartInfo = CreateGitProcessStartInfo($"checkout {commitHash}")
+                    StartInfo = CreateGitProcessStartInfo($"checkout {commitHash}", path)
                 };
             }
             else
@@ -336,16 +335,35 @@ namespace NotFluffy.PackageEditor
             {
                 var error = process.StandardError.ReadToEnd();
 
-                if (!string.IsNullOrWhiteSpace(error))
+                if (ShouldShowErrorMessage(error))
                     Debug.LogError(error);
             }
 
             process.WaitForExit();
         }
 
+        private static bool ShouldShowErrorMessage(string error)
+        {
+            if (string.IsNullOrWhiteSpace(error))
+                return false;
+            
+            if (error.StartsWith("Note:"))
+                return false;
+            
+            return true;
+        }
+
         public static void SwitchAllToProduction()
         {
-            
+            var packages = PackageInfo.GetAllRegisteredPackages();
+            foreach (var name in PackageEditorDB.Entries.Keys.ToArray())
+            {
+                var package = packages.FirstOrDefault(info => info.name == name);
+                if(package == null)
+                    Debug.LogError($"Failed to find installed package with the name {name}");
+                
+                SwitchToGit(package);
+            }
         }
     }
 }

@@ -13,13 +13,14 @@ namespace NotFluffy.PackageEditor
 	{
 		private const string DATABASE_NAME = "PackageEditorDB.json";
 
-		private static readonly Dictionary<string, string> Entries;
+		private static readonly Dictionary<string, string> _entries;
+		public static IReadOnlyDictionary<string, string> Entries => _entries;
 
-		public static int Count => Entries.Count;
+		public static int Count => _entries.Count;
 
 		static PackageEditorDB()
 		{
-			Entries = Load();
+			_entries = Load();
 		}
 
 		private static Dictionary<string, string> Load()
@@ -34,23 +35,23 @@ namespace NotFluffy.PackageEditor
 			return result;
 		}
 
-		public static bool TryGetUrl(PackageInfo packageInfo, out string url) => Entries.TryGetValue(packageInfo.name, out url);
-		public static bool Contains(PackageInfo packageInfo) => Entries.ContainsKey(packageInfo.name);
+		public static bool TryGetUrl(PackageInfo packageInfo, out string url) => _entries.TryGetValue(packageInfo.name, out url);
+		public static bool Contains(PackageInfo packageInfo) => _entries.ContainsKey(packageInfo.name);
 
 		public static void Add(PackageInfo packageInfo)
 		{
 			var url = packageInfo.GetPackageUrl();
 			
-			if (Entries.TryGetValue(packageInfo.name, out var existing) && existing == url)
+			if (_entries.TryGetValue(packageInfo.name, out var existing) && existing == url)
 				return;
 			
-			Entries[packageInfo.name] = url;
+			_entries[packageInfo.name] = url;
 			Flush();
 		}
 		
 		public static void Remove(PackageInfo packageInfo)
 		{
-			if (Entries.Remove(packageInfo.name))
+			if (_entries.Remove(packageInfo.name))
 				Flush();
 		}
 
@@ -58,13 +59,13 @@ namespace NotFluffy.PackageEditor
 		{
 			var filepath = GetDatabasePath();
 			
-			if(Entries.Count == 0)
+			if(_entries.Count == 0)
 			{
 				File.Delete(filepath);
 			}
 			else
 			{
-				var contents = ToString(Entries);
+				var contents = ToString(_entries);
 				File.WriteAllText(filepath, contents);
 			}
 		}
