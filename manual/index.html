@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Hibzz.PackageEditor | PackageEditor | 1.0.0 </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Hibzz.PackageEditor | PackageEditor | 1.0.0 ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      <meta name="docfx:disablenewtab" content="true">
+      
+      <meta name="docfx:docurl" content="https://github.com/NotFluffyGames/PackageEditor/blob/main/Documentation~/manual/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="landing" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../logo.svg" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="hibzzpackageeditor">Hibzz.PackageEditor</h1>
+
+<p><img src="https://img.shields.io/badge/LICENSE-CC--BY--4.0-ee5b32?style=for-the-badge" alt="LICENSE"> <a href="https://twitter.com/hibzzgames"><img src="https://img.shields.io/badge/follow-%40hibzzgames-1DA1f2?logo=twitter&amp;style=for-the-badge" alt="Twitter Follow"></a> <a href="https://discord.gg/YXdJ8cZngB"><img src="https://img.shields.io/discord/695898694083412048?color=788bd9&amp;label=DIscord&amp;style=for-the-badge" alt="Discord"></a> <img src="https://img.shields.io/badge/unity-%23000000.svg?style=for-the-badge&amp;logo=unity&amp;logoColor=white" alt="Unity"> <img src="https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&amp;logo=c-sharp&amp;logoColor=white" alt="C#"></p>
+<p><em><strong>A tool for Unity to edit a git package within the package manager</strong></em></p>
+<p><img src="https://user-images.githubusercontent.com/37605842/215235067-a627f9cd-ac5b-4d8c-b06a-39cbd643d522.png" alt="Untitled"></p>
+<h2 id="installation">Installation</h2>
+<p><strong>Via Github</strong>
+This package can be installed in the Unity Package Manager using the following git URL.</p>
+<pre><code>https://github.com/hibzzgames/Hibzz.PackageEditor.git
+</code></pre>
+<p>Alternatively, you can download the latest release from the <a href="https://github.com/hibzzgames/Hibzz.PackageEditor/releases">releases page</a> and manually import the package into your project.</p>
+<br>
+<h2 id="the-problem-im-trying-to-solve">The problem I'm trying to solve</h2>
+<p>Across different Unity projects that I rapidly prototype, I use a lot of scripts that are shared between projects. To keep things streamlined (and shareable), I've created self-contained packages that I can easily import into any project using the Unity Package Manager. However, as I continue to work on the projects, I might find issues or want to add new features/improvements to the packages. To do this, I have to either work on the source repository directly, push an update, and then update the package in the project, or I have to manually copy the files over to the project and replace the UPM package. Both of these options are not ideal, and I wanted to find a better way to quickly iterate on my packages, test them, and then push them to the source repository.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>The package editor is a tool that allows you to edit a package that is installed using a git URL via the Unity Package Manager. It does this by creating a local copy of the package in the developer's <code>Documents/UnityPackageSource/</code> folder and creating a symbolic link to the local <code>Packages</code> folder to create an <em>Embedded</em> package. This allows you to edit the package in the project, and then push the changes to the source repository. Then once you are done, you can revert to the original &quot;production&quot; package using this tool.</p>
+<p>This way you can quickly iterate on your packages, across multiple projects, without having to worry about juggling multiple repositories or manually copying files over.</p>
+<h2 id="editing-a-package">Editing a package</h2>
+<ul>
+<li>After installing the package, you can open the package manager and select the git package you want to edit.</li>
+<li>Click the <code>Switch to Development Mode</code> button to clone the repo and create a symbolic link to the package.</li>
+<li>Now, in the package directory, you can edit the files and test them in your project</li>
+</ul>
+<h2 id="reverting-to-the-original-package">Reverting to the original package</h2>
+<ul>
+<li>After you are done editing the package and have pushed your changes to the source repository, you can revert to the original package by clicking the <code>Revert to Production Mode</code> button.</li>
+<li>This will remove the symbolic link and restore the original package
+<ul>
+<li>Note: This will not delete the local copy of the package in the <code>Documents/UnityPackageSource/</code> folder. This is so that you can continue to edit the package without having to clone it again from other projects.</li>
+</ul>
+</li>
+</ul>
+<br>
+<h2 id="have-a-question-or-want-to-contribute">Have a question or want to contribute?</h2>
+<p>If you have any questions or want to contribute, feel free to join the <a href="https://discord.gg/YXdJ8cZngB">Discord server</a> or <a href="https://twitter.com/hibzzgames">Twitter</a>. I'm always looking for feedback and ways to improve this tool. Thanks!</p>
+<p>Additionally, you can support the development of these open-source projects via <a href="https://github.com/sponsors/sliptrixx">GitHub Sponsors</a> and gain early access to the projects.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/NotFluffyGames/PackageEditor/blob/main/Documentation~/manual/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made by <a href="https://github.com/NotFluffyGames" target="_blank">NotFluffyGames</a> using <a href="https://dotnet.github.io/docfx" target="_blank">DocFX</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
